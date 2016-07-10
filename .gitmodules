@@ -1,0 +1,21 @@
+[submodule "ext/makeEspArduino"]
+	path = ext/makeEspArduino
+	url = https://github.com/plerup/makeEspArduino.git
+[submodule "ext/esp8266"]
+	path = ext/esp8266
+	url = https://github.com/esp8266/Arduino.git
+[submodule "ext/libs/DHT-sensor-library"]
+	path = ext/libs/DHT-sensor-library
+	url = https://github.com/krzychb/DHT-sensor-library.git
+[submodule "ext/libs/Adafruit_SI1145_Library"]
+	path = ext/libs/Adafruit_SI1145_Library
+	url = https://github.com/adafruit/Adafruit_SI1145_Library.git
+[submodule "ext/libs/Adafruit_BMP085_Unified"]
+	path = ext/libs/Adafruit_BMP085_Unified
+	url = https://github.com/adafruit/Adafruit_BMP085_Unified.git
+[submodule "ext/libs/Adafruit_Sensor"]
+	path = ext/libs/Adafruit_Sensor
+	url = https://github.com/adafruit/Adafruit_Sensor.git
+[submodule "ext/libs/imroy_pubsubclient"]
+	path = ext/libs/imroy_pubsubclient
+	url = https://github.com/Imroy/pubsubclient.git

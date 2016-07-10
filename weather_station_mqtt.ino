@@ -1,5 +1,3 @@
-#include <DHT.h>
-
 /**
    Flashing: for whatever reason, the Adafruit Huzzah and the Olimex USB-Serial-Cable-F do not play nicely together.
 
@@ -108,22 +106,7 @@ DHT dht(PIN_DHT22, DHT22);
 WiFiClient wifiClient;
 PubSubClient client(wifiClient, MQTT_HOST);
 
-
-void setup(void) {
-  pinMode(PIN_LED, OUTPUT);
-  digitalWrite(PIN_LED, 1);
-  connectWifi();
-
-#ifdef SENSOR_SI1145
-  initSensorSi1145();
-#endif SENSOR_SI1145
-
-#ifdef SENSOR_BMP085
-  initSensorBmp085();
-#endif
-
-
-}
+void publish(String name, float val);
 
 void connectWifi()  {
   Serial.begin(SERIAL_BAUD);
@@ -237,8 +220,6 @@ void publishSensorDht22()  {
   publish("dht-humidity", pressure);
   publish("dht-heat_index", heat_index);
   Serial.println("Finished publishing to DHT22");
-
-
 }
 
 void deepSleep() {
@@ -253,11 +234,21 @@ void deepSleep() {
   delay(100);
 }
 
-void publish(String measurement_name, float value) {
-  String topic = String("/") + NODE_NAME + String("/") + measurement_name;
-  client.publish(topic, String(value));
 
+void setup(void) {
+  pinMode(PIN_LED, OUTPUT);
+  digitalWrite(PIN_LED, 1);
+  connectWifi();
+
+#ifdef SENSOR_SI1145
+  initSensorSi1145();
+#endif SENSOR_SI1145
+
+#ifdef SENSOR_BMP085
+  initSensorBmp085();
+#endif
 }
+
 
 void loop(void) {
   Serial.println("Entering loop");
@@ -277,5 +268,9 @@ void loop(void) {
   publishSensorDht22();
 #endif
   deepSleep();
+}
 
+void publish(String measurement_name, float value) {
+  String topic = String("/") + NODE_NAME + String("/") + measurement_name;
+  client.publish(topic, String(value));
 }
