@@ -30,18 +30,18 @@
    BEGIN config constants
 */
 
-#define NODE_NAME "weather"
+#define NODE_NAME "bathroom"
 #define MQTT_HOST "mqtt"
-#define UPDATE_INTERVAL 30
-#define SERIAL_BAUD 9600
+#define UPDATE_INTERVAL 180
+// NodeMCU prefers 9600 here, but 74880 shows the boot messages
+#define SERIAL_BAUD 74880
 #define SENSOR_SI1145 1
 #define SENSOR_BMP085 1
 #define SENSOR_BAT 1
 #define SENSOR_DHT22
 #define SENSOR_BAT_INTERNAL
-#define SENSOR_DHT22
-#define PIN_LED 13
-#define PIN_DHT22 6 /* Don't know */
+//#define PIN_LED 13
+#define PIN_DHT22 13 
 /*
 
     For the ADC/Battery voltage measurement: on the NodeMCU 1.0, Pin A0 already has a voltage divider so that it expects 0-3.3V.
@@ -193,10 +193,10 @@ void publishSensorBmp085() {
 
 void publishSensorBat() {
 #ifdef SENSOR_BAT_INTERNAL
-  client.publish("/weather/bat", String(ESP.getVcc()));
+  publish("bat", ESP.getVcc());
 #else
   float voltage = analogRead(A0) * SENSOR_BAT_EXTERNAL_CONSTANT;
-  client.publish("/weather/bat", String(voltage));
+  publish("bat", voltage);
 #endif /* SENSOR_BAT_INTERNAL */
 }
 
@@ -216,8 +216,10 @@ void publishSensorDht22()  {
 
   // Compute heat index in Celsius (isFahrenheit = false)
   float heat_index = dht.computeHeatIndex(temperature, humidity, false);
+  Serial.println("Heat index: " + String(heat_index));
   Serial.println("Finished reading from DHT22. Publishing!");
-  publish("dht-humidity", pressure);
+  publish("dht-temperature", temperature);
+  publish("dht-humidity", humidity);
   publish("dht-heat_index", heat_index);
   Serial.println("Finished publishing to DHT22");
 }
@@ -226,7 +228,7 @@ void deepSleep() {
   Serial.println("going to sleep!");
   // TODO: WAKE_RF_DEFAULT works, but WAKE_RF_DISABLED will keep the wifi disabled
   // after the reboot!
-  digitalWrite(PIN_LED, 0);
+ // digitalWrite(PIN_LED, 0);
   ESP.deepSleep(UPDATE_INTERVAL * 1000 * 1000, WAKE_RF_DEFAULT);
   /* The internet says that the delay call is needed for ESP.deepSleep to work
       properly
@@ -236,13 +238,13 @@ void deepSleep() {
 
 
 void setup(void) {
-  pinMode(PIN_LED, OUTPUT);
-  digitalWrite(PIN_LED, 1);
+ // pinMode(PIN_LED, OUTPUT);
+  // digitalWrite(PIN_LED, 1);
   connectWifi();
 
 #ifdef SENSOR_SI1145
   initSensorSi1145();
-#endif SENSOR_SI1145
+#endif /* SENSOR_SI1145 */
 
 #ifdef SENSOR_BMP085
   initSensorBmp085();
@@ -258,7 +260,7 @@ void loop(void) {
 
 #ifdef SENSOR_BMP085
   publishSensorBmp085();
-#endif SENSOR_BMP085
+#endif /* SENSOR_BMP085 */
 
 #ifdef SENSOR_BAT
   publishSensorBat();
