@@ -30,16 +30,6 @@ ADC_MODE(ADC_TOUT);
 
 int start_up = millis();
 
-/*
-TODO: the file-level initialization does not work well with enabling/disabling
-of features via (always visible) functions - we should move the declarations into the
-functions themselves. That way, they are always compiled (=> run through static analysis)
-even if they are later stripped - assuming that stripping actually happens.
-
-Alternatively, we could go back to run-time selection of sensors instead of compile-time selection
- */
-
-
 boolean sensor_si1145 = SENSOR_SI1145;;
 boolean sensor_dht22 = SENSOR_DHT22;
 boolean sensor_bmp085 = SENSOR_BMP085;
@@ -76,12 +66,14 @@ void connectWifi()  {
     Serial.println("Connecting to WiFi");
 
     WiFi.mode(WIFI_STA);
-    IPAddress node_ip(NODE_IP);
-    IPAddress node_gateway(NODE_GATEWAY);
-    IPAddress node_subnet(NODE_SUBNET);
-    WiFi.config(node_ip, node_gateway, node_subnet);
+    IPAddress node_ip(192, 168, 1, 61);
+    IPAddress node_gateway(192, 168, 1, 1);
+    IPAddress node_subnet(255, 255, 255, 0);
+    // We assume that gateway is also the DNS
+    WiFi.config(node_ip, node_gateway, node_subnet, node_gateway);
     WiFi.begin(ssid, password);
     Serial.println("");
+    Serial.println("Test blah");
 
     while (WiFi.status() != WL_CONNECTED) {
         delay(100);
@@ -201,6 +193,14 @@ void deepSleep() {
      * WAKE_RF_DEFAULT works.
      * WAKE_RF_DISABLED will keep the wifi disabled after the reboot!
      * 
+     * WAKE_RF_DEFAULT will calibrate the RF according to the contents of
+     * esp_init_data_default.bin which is flashed at 0x1fc00 at our 2M flash.
+     * The value at byte 108 will dictate the frequency - after how many deep sleep
+     * cycles RF calibration happens.
+     * To change:
+     * esptool.py read_flash 0x1fc000 1024 esp_init_data_default.bin
+     * hexer esp_init_data_default.bin
+     * esptool.py write_flash 0x1fc000 esp_init_data_default.bin
      */
     ESP.deepSleep(UPDATE_INTERVAL * 1000 * 1000, WAKE_RF_DEFAULT);
     /*
