@@ -20,6 +20,7 @@
 
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
+#include <Ticker.h>
 
 #ifdef SENSOR_BAT_INTERNAL
 ADC_MODE(ADC_VCC);
@@ -277,7 +278,7 @@ void deepSleep() {
 
 void setup(void) {
     Serial.begin(SERIAL_BAUD);
-    //sleepTicker.once_ms(15 * 1000, &deepSleep)
+    sleepTicker.once_ms(15 * 1000, &deepSleep)
     // First things first: we set up the sensors first, the wifi should
     // auto-connect in the meantime - except for the very first boot,
     // where wifi will have to be set up in connectWifi().
