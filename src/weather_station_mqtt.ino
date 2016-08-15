@@ -29,6 +29,8 @@ ADC_MODE(ADC_TOUT);
 
 
 int start_up = millis();
+int wifi_connected = 0;
+int sensor_init_published = 0;
 
 boolean sensor_si1145 = SENSOR_SI1145;;
 boolean sensor_dht22 = SENSOR_DHT22;
@@ -65,13 +67,19 @@ void connectWifi()  {
     Serial.println("Initializing!");
     Serial.println("Connecting to WiFi");
 
-    WiFi.mode(WIFI_STA);
     IPAddress node_ip(192, 168, 1, 61);
     IPAddress node_gateway(192, 168, 1, 1);
     IPAddress node_subnet(255, 255, 255, 0);
     // We assume that gateway is also the DNS
     WiFi.config(node_ip, node_gateway, node_subnet, node_gateway);
-    WiFi.begin(ssid, password);
+    // https://github.com/z2amiller/sensorboard/blob/master/PowerSaving.md
+    if (WiFi.SSID() != String(ssid)) {
+        WiFi.begin(ssid, password);
+        WiFi.mode(WIFI_STA);
+        WiFi.persistent(true);
+        WiFi.setAutoConnect(true);
+    }
+
     Serial.println("");
     Serial.println("Test blah");
 
@@ -214,6 +222,10 @@ void deepSleep() {
 void setup(void) {
     connectWifi();
 
+    wifi_connected = millis();
+    // Debug
+    publish("wifi-connect", wifi_connected - start_up);
+
     if (sensor_si1145) { 
         initSensorSi1145();
     }
@@ -240,6 +252,10 @@ void loop(void) {
     if (sensor_dht22) {
         publishSensorDht22();
     }
+
+    // Debug
+    sensor_init_published = millis();
+    publish("sensor-init-publish", sensor_init_published - wifi_connected);
     publishCycleDuration();
     deepSleep();
 }
