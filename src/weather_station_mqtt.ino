@@ -10,7 +10,7 @@
    For the ADC/Battery voltage measurement: on the NodeMCU 1.0, Pin A0 already has a voltage divider so that it expects 0-3.3V.
    For a ~6V battery pack, you have go bring your own voltage divider and use PIN2 as the input (labeled as RSVD). See Page 5 "IO CONN" in NODEMCU_DEVKIT_V1.0.PDF.
    With my DMM, "deep sleep" voltage is 4.96V and about 4.85 once the ESP wakes. This results in a value of 743 from the ADC.
-*/
+ */
 
 #define SENSOR_BAT_EXTERNAL_CONSTANT 4.85 / 743.0;
 
@@ -27,10 +27,10 @@ ADC_MODE(ADC_VCC);
 ADC_MODE(ADC_TOUT);
 #endif
 
+Ticker sleepTicker;
+
 
 int start_up = millis();
-int wifi_connected = 0;
-int sensor_init_published = 0;
 
 boolean sensor_si1145 = SENSOR_SI1145;;
 boolean sensor_dht22 = SENSOR_DHT22;
@@ -53,9 +53,13 @@ boolean bmp_ok = false;
 float pressure = 0;
 float temperature = 0;
 
+// DHT22
+float dht_humidity = 0;
+float dht_temperature = 0;
+float dht_heat_index = 0;
+
 #include "DHT.h"
 DHT dht(PIN_DHT22, DHT22);
-
 
 WiFiClient wifiClient;
 PubSubClient client(wifiClient, MQTT_HOST);
@@ -63,10 +67,6 @@ PubSubClient client(wifiClient, MQTT_HOST);
 void publish(String name, float val);
 
 void connectWifi()  {
-    Serial.begin(SERIAL_BAUD);
-    Serial.println("Initializing!");
-    Serial.println("Connecting to WiFi");
-
     IPAddress node_ip(192, 168, 1, 61);
     IPAddress node_gateway(192, 168, 1, 1);
     IPAddress node_subnet(255, 255, 255, 0);
@@ -80,11 +80,8 @@ void connectWifi()  {
         WiFi.setAutoConnect(true);
     }
 
-    Serial.println("");
-    Serial.println("Test blah");
-
     while (WiFi.status() != WL_CONNECTED) {
-        delay(100);
+        delay(50);
         Serial.print(".");
     }
     Serial.println("");
@@ -97,6 +94,18 @@ void connectWifi()  {
         Serial.println("Connected to MQTT server");
     } else {
         Serial.println("Could not connect to MQTT server!");
+    }
+}
+
+void initSensors() {
+    if (sensor_si1145) {
+        initSensorSi1145();
+    }
+    if (sensor_bmp085) {
+        initSensorBmp085();
+    }
+    if (sensor_dht22) {
+        initSensorDht22();
     }
 }
 
@@ -124,21 +133,16 @@ void initSensorDht22() {
     dht.begin();
 }
 
-void publishSensorSi1145() {
+void readSensorSi1145() {
     if (sensor_ok) {
-        Serial.println("Si1145 OK, reading!");
         uv = sensor.readUV() / 100;
         visible = sensor.readVisible();
         ir = sensor.readIR();
         Serial.println("Finished reading from Si1145. Publishing!");
-        publish("uv", uv);
-        publish("visible", visible);
-        publish("ir", ir);
-        Serial.println("Finished publishing from Si1145");
     }
 }
 
-void publishSensorBmp085() {
+void readSensorBmp085() {
     if (bmp_ok) {
         Serial.println("BMP085 OK, reading!");
         /* Get a new sensor event */
@@ -149,10 +153,72 @@ void publishSensorBmp085() {
         if (event.pressure) {
             pressure = event.pressure;
         }
+
         bmp.getTemperature(&temperature);
+    }
+
+}
+
+void readSensorDht22() {
+    /* Adafruit recommends a dely of 2 seconds to get stable readings. We try to do without first. */
+    dht_humidity = dht.readHumidity();
+    // Read temperature as Celsius (the default)
+    dht_temperature = dht.readTemperature();
+    if (isnan(dht_humidity)) {
+        Serial.println("Failed to read humidity from DHT22 sensor!");
+        return;
+    }
+    if (isnan(dht_temperature)) {
+        Serial.println("Failed to read temperature from DHT22 sensor!");
+        return;
+    }
+
+    // Compute heat index in Celsius (isFahrenheit = false)
+    dht_heat_index = dht.computeHeatIndex(dht_temperature, dht_humidity, false);
+}
+
+void readSensors() {
+    if (sensor_si1145) {
+        readSensorSi1145();
+    }
+    if (sensor_bmp085) {
+        readSensorBmp085();
+    }
+    if (sensor_dht22) {
+        readSensorDht22();
+    }
+}
+
+
+void publishSensors() {
+    if (sensor_si1145) {
+        publishSensorSi1145();
+    }
+    if (sensor_bmp085) {
+        publishSensorBmp085();
+    }
+    if (sensor_bat) {
+        publishSensorBat();
+    }
+    if (sensor_dht22) {
+        publishSensorDht22();
+    }
+}
+
+void publishSensorSi1145() {
+    if (sensor_ok) {
+        publish("uv", uv);
+        publish("visible", visible);
+        publish("ir", ir);
+        Serial.println("Finished publishing from Si1145");
+    }
+}
+
+void publishSensorBmp085() {
+    if (bmp_ok) {
         Serial.println("Finished reading from BMP085. Publishing!");
         publish("temp", temperature);
-        publish("/weather/pressure", pressure);
+        publish("pressure", pressure);
         Serial.println("Finished publishing from BMP085");
     }
 }
@@ -167,26 +233,16 @@ void publishSensorBat() {
 }
 
 void publishSensorDht22()  {
-    /* Adafruit recommends a dely of 2 seconds to get stable readings. We try to do without first. */
-    float humidity = dht.readHumidity();
-    // Read temperature as Celsius (the default)
-    float temperature = dht.readTemperature();
-    if (isnan(humidity)) {
-        Serial.println("Failed to read humidity from DHT22 sensor!");
+    if (isnan(dht_humidity)) {
         return;
     }
-    if (isnan(temperature)) {
-        Serial.println("Failed to read temperature from DHT22 sensor!");
+    if (isnan(dht_temperature)) {
         return;
     }
 
-    // Compute heat index in Celsius (isFahrenheit = false)
-    float heat_index = dht.computeHeatIndex(temperature, humidity, false);
-    Serial.println("Heat index: " + String(heat_index));
-    Serial.println("Finished reading from DHT22. Publishing!");
-    publish("dht-temperature", temperature);
-    publish("dht-humidity", humidity);
-    publish("dht-heat_index", heat_index);
+    publish("dht-temperature", dht_temperature);
+    publish("dht-humidity", dht_humidity);
+    publish("dht-heat_index", dht_heat_index);
     Serial.println("Finished publishing to DHT22");
 }
 
@@ -220,44 +276,28 @@ void deepSleep() {
 
 
 void setup(void) {
+    Serial.begin(SERIAL_BAUD);
+    //sleepTicker.once_ms(15 * 1000, &deepSleep)
+    // First things first: we set up the sensors first, the wifi should
+    // auto-connect in the meantime - except for the very first boot,
+    // where wifi will have to be set up in connectWifi().
+    // That should shave off precious milliseconds
+    initSensors();
+    readSensors();
+    int sensor_init_read = millis();
     connectWifi();
-
-    wifi_connected = millis();
-    // Debug
+    int wifi_connected = millis();
+    publishSensors();
+    int sensors_published = millis();
     publish("wifi-connect", wifi_connected - start_up);
-
-    if (sensor_si1145) { 
-        initSensorSi1145();
-    }
-    if (sensor_bmp085) {
-        initSensorBmp085();
-    }
-    if (sensor_dht22) {
-        initSensorDht22();
-    }
+    publish("sensor-init-read",  sensor_init_read - start_up);
+    publish("sensor-publish", sensors_published - start_up);
+    publishCycleDuration();
+    deepSleep();
 }
 
 
 void loop(void) {
-    Serial.println("Entering loop");
-    if (sensor_si1145) {
-        publishSensorSi1145();
-    }
-    if (sensor_bmp085) {
-        publishSensorBmp085();
-    }
-    if (sensor_bat) {
-        publishSensorBat();
-    }
-    if (sensor_dht22) {
-        publishSensorDht22();
-    }
-
-    // Debug
-    sensor_init_published = millis();
-    publish("sensor-init-publish", sensor_init_published - wifi_connected);
-    publishCycleDuration();
-    deepSleep();
 }
 
 void publish(String measurement_name, float value) {
