@@ -278,11 +278,13 @@ void deepSleep() {
 
 void setup(void) {
     Serial.begin(SERIAL_BAUD);
-    sleepTicker.once_ms(15 * 1000, &deepSleep)
+    // Wait at most 15s before going back to sleep
+    sleepTicker.once_ms(15 * 1000, &deepSleep);
     // First things first: we set up the sensors first, the wifi should
     // auto-connect in the meantime - except for the very first boot,
     // where wifi will have to be set up in connectWifi().
-    // That should shave off precious milliseconds
+    // That should shave off precious milliseconds - FWIW, reading the DHT22
+    // takes about 275ms
     initSensors();
     readSensors();
     int sensor_init_read = millis();
