@@ -303,7 +303,7 @@ void setup(void) {
     // Wait at most 15s before going back to sleep
     sleepTicker.once_ms(15 * 1000, &deepSleep);
     // Channel is not stored (?), so we set it all the time
-    wifi_set_channel(channel);
+//    wifi_set_channel(channel);
     // First things first: we set up the sensors first, the wifi should
     // auto-connect in the meantime - except for the very first boot,
     // where wifi will have to be set up in connectWifi().
