@@ -27,7 +27,7 @@ extern "C"{
 }
 
 // Channel is apparently not stored (?!)
-int channel = 11;
+//int channel = 11;
 
 #ifdef SENSOR_BAT_INTERNAL
 ADC_MODE(ADC_VCC);
@@ -90,16 +90,17 @@ void connectWifi()  {
     }
     Serial.println("Configured SSID:");
     Serial.println(WiFi.SSID());
-    if (WiFi.SSID() != String(ssid)) {
+    //if (WiFi.SSID() != String(ssid)) {
         Serial.println("SSID does not match - setting up Wifi from scratch!");
         // We do pass in the channel here, but from the Arduino code it seems that it is not saved?!
-        WiFi.begin(ssid, password, channel, bssid);
+        //WiFi.begin(ssid, password, channel, bssid);
         WiFi.mode(WIFI_STA);
+        WiFi.begin(ssid, password);
         WiFi.persistent(true);
         WiFi.setAutoConnect(true);
-    } else {
-        Serial.println("Stored SSID matches - relying on WiFi autoconnect!");
-    }
+    //} else {
+    //    Serial.println("Stored SSID matches - relying on WiFi autoconnect!");
+    //}
 
     while (WiFi.status() != WL_CONNECTED) {
         delay(50);
