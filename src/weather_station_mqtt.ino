@@ -26,9 +26,6 @@ extern "C"{
 #include "user_interface.h"
 }
 
-// Channel is apparently not stored (?!)
-//int channel = 11;
-
 #ifdef SENSOR_BAT_INTERNAL
 ADC_MODE(ADC_VCC);
 #else
@@ -80,40 +77,29 @@ void connectWifi()  {
     IPAddress node_ip(192, 168, 1, 61);
     IPAddress node_gateway(192, 168, 1, 1);
     IPAddress node_subnet(255, 255, 255, 0);
-    // We assume that gateway is also the DNS
-    WiFi.config(node_ip, node_gateway, node_subnet, node_gateway);
-    // https://github.com/z2amiller/sensorboard/blob/master/PowerSaving.md
-    if (WiFi.getAutoConnect()) {
-        Serial.println("Wifi Autoconnect on!");
-    } else {
-        Serial.println("Wifi autoconnect off!");
-    }
-    Serial.println("Configured SSID:");
-    Serial.println(WiFi.SSID());
-    //if (WiFi.SSID() != String(ssid)) {
-        Serial.println("SSID does not match - setting up Wifi from scratch!");
-        // We do pass in the channel here, but from the Arduino code it seems that it is not saved?!
-        //WiFi.begin(ssid, password, channel, bssid);
+
+
+  WiFiClient::setLocalPortStart(micros());
+
+    if (WiFi.status() != WL_CONNECTED) {
+        delay(10);
         WiFi.mode(WIFI_STA);
+        // ****************
         WiFi.begin(ssid, password);
-        WiFi.persistent(true);
-        WiFi.setAutoConnect(true);
-    //} else {
-    //    Serial.println("Stored SSID matches - relying on WiFi autoconnect!");
-    //}
+        WiFi.config(node_ip, node_gateway, node_subnet, node_gateway);
+        // ****************
 
-    while (WiFi.status() != WL_CONNECTED) {
-        delay(50);
-        Serial.print(".");
+        int Attempt = 0;
+        while (WiFi.status() != WL_CONNECTED) {
+            delay(50);
+            delay(50);
+            Serial.print(".");
+            Attempt++;
+            if (Attempt == 150) {
+                deepSleep();
+            }
+        }
     }
-    Serial.println("");
-    Serial.print("Connected to ");
-    Serial.println(ssid);
-    Serial.print("IP address: ");
-    Serial.println(WiFi.localIP());
-    Serial.print("BSSID: ");
-    Serial.println(WiFi.BSSIDstr());
-
     if (client.connect(NODE_NAME)) {
         Serial.println("Connected to MQTT server");
     } else {
@@ -304,7 +290,6 @@ void setup(void) {
     // Wait at most 15s before going back to sleep
     sleepTicker.once_ms(15 * 1000, &deepSleep);
     // Channel is not stored (?), so we set it all the time
-//    wifi_set_channel(channel);
     // First things first: we set up the sensors first, the wifi should
     // auto-connect in the meantime - except for the very first boot,
     // where wifi will have to be set up in connectWifi().
