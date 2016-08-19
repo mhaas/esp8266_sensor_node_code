@@ -22,6 +22,9 @@
 #include <PubSubClient.h>
 #include <Ticker.h>
 
+#include <ESP8266httpUpdate.h>
+
+
 extern "C"{
 #include "user_interface.h"
 }
@@ -70,8 +73,38 @@ WiFiClient wifiClient;
 PubSubClient client(wifiClient, MQTT_HOST);
 
 void publish(String name, float val);
+void checkUpdate();
 
-uint8_t bssid[] = {0xF4, 0xF2, 0x6D, 0x9C, 0x0D, 0xB9};
+
+void mqttCallback(const MQTT::Publish& pub) {
+    String givenTopic = pub.topic();
+    String updateTopic = String("/") + String(NODE_NAME) + String("check_update");
+    if (givenTopic.equals(updateTopic)) {
+        checkUpdate();
+    }
+
+}
+
+void checkUpdate() {
+    String url = String("http://") + String(UPDATE_SERVER) + String("/") + String(NODE_NAME) + String(".bin");
+    String currentVersion = String(BUILD_TIMESTAMP);
+    ESPhttpUpdate.rebootOnUpdate(true);
+    t_httpUpdate_return ret = ESPhttpUpdate.update(url, currentVersion);
+            switch(ret) {
+            case HTTP_UPDATE_FAILED:
+                Serial.printf("HTTP_UPDATE_FAILD Error (%d): %s", ESPhttpUpdate.getLastError(), ESPhttpUpdate.getLastErrorString().c_str());
+                break;
+
+            case HTTP_UPDATE_NO_UPDATES:
+                Serial.println("HTTP_UPDATE_NO_UPDATES");
+                break;
+
+            case HTTP_UPDATE_OK:
+                Serial.println("HTTP_UPDATE_OK");
+                break;
+        }
+
+}
 
 void connectWifi()  {
     IPAddress node_ip(192, 168, 1, 61);
@@ -79,7 +112,7 @@ void connectWifi()  {
     IPAddress node_subnet(255, 255, 255, 0);
 
 
-  WiFiClient::setLocalPortStart(micros());
+   WiFiClient::setLocalPortStart(micros());
 
     if (WiFi.status() != WL_CONNECTED) {
         delay(10);
@@ -100,6 +133,7 @@ void connectWifi()  {
             }
         }
     }
+    client.set_callback(mqttCallback);
     if (client.connect(NODE_NAME)) {
         Serial.println("Connected to MQTT server");
     } else {
