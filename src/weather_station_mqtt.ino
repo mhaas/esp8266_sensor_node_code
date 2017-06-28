@@ -271,7 +271,7 @@ void publishSensorBat() {
 #ifdef SENSOR_BAT_INTERNAL
     publish("bat", ESP.getVcc());
 #else
-    float voltage = analogRead(A0) * SENSOR_BAT_EXTERNAL_CONSTANT;
+    float voltage = analogRead(A0);
     publish("bat", voltage);
 #endif /* SENSOR_BAT_INTERNAL */
 }
