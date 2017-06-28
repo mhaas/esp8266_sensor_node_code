@@ -271,7 +271,15 @@ void publishSensorBat() {
 #ifdef SENSOR_BAT_INTERNAL
     publish("bat", ESP.getVcc());
 #else
-    float voltage = analogRead(A0);
+    // Read once to get noise out of the way
+    analogRead(A0);
+    float voltage = 0.0;
+    int iterations = 3;
+    for (int i = 0; i < iterations; i++) {
+        voltage += analogRead(A0);
+        delay(10);
+    }
+    voltage = voltage / iterations;
     publish("bat", voltage);
 #endif /* SENSOR_BAT_INTERNAL */
 }
