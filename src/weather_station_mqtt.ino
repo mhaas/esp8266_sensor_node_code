@@ -43,6 +43,7 @@ int start_up = millis();
 boolean sensor_si1145 = SENSOR_SI1145;;
 boolean sensor_dht22 = SENSOR_DHT22;
 boolean sensor_bmp085 = SENSOR_BMP085;
+boolean sensor_chirp = SENSOR_CHIRP;
 boolean sensor_bat = SENSOR_BAT;
 
 
@@ -68,6 +69,11 @@ float dht_heat_index = 0;
 
 #include "DHT.h"
 DHT dht(PIN_DHT22, DHT22);
+
+#include <I2CSoilMoistureSensor.h>
+I2CSoilMoistureSensor chirp;
+
+float chirp_moisture = 0;
 
 WiFiClient wifiClient;
 PubSubClient client(wifiClient, MQTT_HOST);
@@ -117,18 +123,15 @@ void connectWifi()  {
     if (WiFi.status() != WL_CONNECTED) {
         delay(10);
         WiFi.mode(WIFI_STA);
-        // ****************
         WiFi.begin(ssid, password);
         WiFi.config(node_ip, node_gateway, node_subnet, node_gateway);
-        // ****************
 
-        int Attempt = 0;
+        int attempt = 0;
         while (WiFi.status() != WL_CONNECTED) {
-            delay(50);
-            delay(50);
+            delay(100);
             Serial.print(".");
-            Attempt++;
-            if (Attempt == 150) {
+            attempt++;
+            if (attempt == 150) {
                 deepSleep();
             }
         }
@@ -150,6 +153,9 @@ void initSensors() {
     }
     if (sensor_dht22) {
         initSensorDht22();
+    }
+    if (sensor_chirp) {
+        initSensorChirp();
     }
 }
 
@@ -175,6 +181,12 @@ void initSensorBmp085() {
 void initSensorDht22() {
     // No return value for DHT::begin()
     dht.begin();
+}
+
+void initSensorChirp() {
+    chirp.begin();
+    // Apparently needed!
+    delay(1000);
 }
 
 void readSensorSi1145() {
@@ -221,6 +233,12 @@ void readSensorDht22() {
     dht_heat_index = dht.computeHeatIndex(dht_temperature, dht_humidity, false);
 }
 
+void readSensorChirp() {
+    // there is a isBusy() method, but it's not available
+    // on all firmware versions
+    chirp_moisture = chirp.getCapacitance();
+}
+
 void readSensors() {
     if (sensor_si1145) {
         readSensorSi1145();
@@ -230,6 +248,9 @@ void readSensors() {
     }
     if (sensor_dht22) {
         readSensorDht22();
+    }
+    if (sensor_chirp) {
+        readSensorChirp();
     }
 }
 
@@ -246,6 +267,9 @@ void publishSensors() {
     }
     if (sensor_dht22) {
         publishSensorDht22();
+    }
+    if (sensor_chirp) {
+        publishSensorChirp();
     }
 }
 
@@ -298,6 +322,11 @@ void publishSensorDht22()  {
     Serial.println("Finished publishing to DHT22");
 }
 
+void publishSensorChirp() {
+    publish("chirp-soil_capacitance", chirp_moisture);
+    Serial.println("Finished publishing chirp!");
+}
+
 void publishCycleDuration() {
     int cur = millis();
     publish("cycle-duration", cur - start_up); 
@@ -331,7 +360,6 @@ void setup(void) {
     Serial.begin(SERIAL_BAUD);
     // Wait at most 15s before going back to sleep
     sleepTicker.once_ms(15 * 1000, &deepSleep);
-    // Channel is not stored (?), so we set it all the time
     // First things first: we set up the sensors first, the wifi should
     // auto-connect in the meantime - except for the very first boot,
     // where wifi will have to be set up in connectWifi().
