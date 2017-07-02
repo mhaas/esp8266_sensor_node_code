@@ -92,6 +92,8 @@ I2CSoilMoistureSensor chirp;
 
 float chirp_moisture = 0;
 
+float bat_voltage = 0;
+
 WiFiClient wifiClient;
 PubSubClient client(wifiClient, MQTT_HOST);
 
@@ -261,6 +263,24 @@ void readSensorChirp() {
     chirp_moisture = chirp.getCapacitance();
 }
 
+void readSensorBat() {
+#ifdef SENSOR_BAT_INTERNAL
+    bat_voltage = ESP.getVcc();
+#else
+    // Read once to get noise out of the way
+    analogRead(A0);
+    float voltage = 0.0;
+    int iterations = 3;
+    for (int i = 0; i < iterations; i++) {
+        voltage += analogRead(A0);
+        delay(10);
+    }
+    voltage = voltage / iterations;
+    voltage = voltage * SENSOR_BAT_EXTERNAL_CONSTANT;
+    bat_voltage = voltage;
+#endif /* SENSOR_BAT_INTERNAL */
+}
+
 void readSensors() {
     if (sensor_si1145) {
         readSensorSi1145();
@@ -273,6 +293,9 @@ void readSensors() {
     }
     if (sensor_chirp) {
         readSensorChirp();
+    }
+    if (sensor_bat) {
+        readSensorBat();
     }
 }
 
@@ -293,6 +316,9 @@ void publishSensors() {
     if (sensor_chirp) {
         publishSensorChirp();
     }
+    if (sensor_bat) {
+        publishSensorBat();
+    }
 }
 
 void publishSensorSi1145() {
@@ -311,24 +337,6 @@ void publishSensorBmp085() {
         publish("pressure", pressure);
         Serial.println("Finished publishing from BMP085");
     }
-}
-
-void publishSensorBat() {
-#ifdef SENSOR_BAT_INTERNAL
-    publish("bat", ESP.getVcc());
-#else
-    // Read once to get noise out of the way
-    analogRead(A0);
-    float voltage = 0.0;
-    int iterations = 3;
-    for (int i = 0; i < iterations; i++) {
-        voltage += analogRead(A0);
-        delay(10);
-    }
-    voltage = voltage / iterations;
-    voltage = voltage * SENSOR_BAT_EXTERNAL_CONSTANT;
-    publish("bat", voltage);
-#endif /* SENSOR_BAT_INTERNAL */
 }
 
 void publishSensorDht22()  {
@@ -357,6 +365,10 @@ void publishCycleDuration() {
 
 void disableSensors() {
     digitalWrite(PIN_GNDSW_ENABLE, LOW);
+}
+
+void publishSensorBat() {
+    publish("bat", bat_voltage);
 }
 
 void deepSleep() {
