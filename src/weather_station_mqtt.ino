@@ -406,12 +406,19 @@ void setup(void) {
     }
     initSensors();
     readSensors();
+    //delay(5000); // power usage?
     int sensor_init_read = millis();
     publishSensors();
     int sensors_published = millis();
     publish("wifi-connect", wifi_connected - start_up);
     publish("sensor-init-read",  sensor_init_read - start_up);
     publish("sensor-publish", sensors_published - start_up);
+    Serial.print("Wifi connect: ");
+    Serial.println(wifi_connected - start_up);
+    Serial.print("sensor-init-read: ");
+    Serial.println(sensor_init_read - start_up);
+    Serial.print("sensor-publish:");
+    Serial.println(sensors_published - start_up);
     publishCycleDuration();
     deepSleep();
 }
