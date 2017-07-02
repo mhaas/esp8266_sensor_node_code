@@ -390,19 +390,23 @@ void setup(void) {
     Serial.begin(SERIAL_BAUD);
     // Wait at most 15s before going back to sleep
     sleepTicker.once_ms(15 * 1000, &deepSleep);
-    // First things first: we set up the sensors first, the wifi should
-    // auto-connect in the meantime - except for the very first boot,
-    // where wifi will have to be set up in connectWifi().
-    // That should shave off precious milliseconds - FWIW, reading the DHT22
-    // takes about 275ms
-    
-    // We may have to give the sensors enough time to boot up properly
+    // We enable sensors first, then wait for WiFi to connect. If WiFi connects faster
+    // than we expect the sensors to be ready, we wait some additional time before initializing
+    // and reading.
+    // This means we will be online longer, but we use much less power during sleep if we turn off the
+    // the sensors.
+    // For the DHT-22, we stay online around 275ms longer.
     enableSensors();
+    int sensor_enabled = millis();
+    connectWifi();
+    int wifi_connected = millis();
+    const int SENSOR_STARTUP_TIME = 1500;
+    if (wifi_connected - sensor_enabled < SENSOR_STARTUP_TIME) {
+        delay(SENSOR_STARTUP_TIME - (wifi_connected - sensor_enabled));
+    }
     initSensors();
     readSensors();
     int sensor_init_read = millis();
-    connectWifi();
-    int wifi_connected = millis();
     publishSensors();
     int sensors_published = millis();
     publish("wifi-connect", wifi_connected - start_up);
