@@ -59,6 +59,25 @@ uint16_t ir = 0;
 uint16_t visible = 0;
 
 #include <Adafruit_BMP085_U.h>
+// The BMP085 driver - or rather the BME280 sensor - has several
+// interesting power management options. The driver operators
+// the sensor in "normal" mode, which means the sensor is continuously
+// performing measurements according to some internal configuration
+// The oversampling settings for pressure
+// can be configured in the device - the single parameter to begin()
+// is a shortcut to that. Note that the driver does not set the recommended x2
+// temperature oversampling for default BMP085_MODE_ULTRAHIGHRES.
+
+// The constants for the pressure oversampling also are completely wrong.
+
+
+// The driver currently does not expose a method to set
+// the internal polling rate.
+
+// In any case, I measured ~100uA for the sensor + breakout in normal mode
+// That seems to be a lot more than the numbers in the datasheet would indicate,
+// but since we're nowadays turning off the sensor, it does not matter
+// The breakout possibly contains a vreg which may account for the difference
 Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
 boolean bmp_ok = false;
 float pressure = 0;
