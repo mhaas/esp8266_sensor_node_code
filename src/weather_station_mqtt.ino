@@ -394,6 +394,18 @@ void deepSleep() {
     delay(100);
 }
 
+void deepSleepForever() {
+    ESP.deepSleep(0);
+    delay(100);
+}
+
+void checkBatteryNotTooLow() {
+    // TODO: make configurable
+    if (bat_voltage < 3.4) {
+        publish("bat-low", 1.0);
+        deepSleepForever();
+    }
+}
 
 void setup(void) {
     Serial.begin(SERIAL_BAUD);
@@ -415,6 +427,7 @@ void setup(void) {
     }
     initSensors();
     readSensors();
+    checkBatteryNotTooLow();
     // For the time it takes to read the sensors, we could try forcing wifi sleep
     int sensor_init_read = millis();
     publishSensors();
