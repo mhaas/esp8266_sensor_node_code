@@ -397,25 +397,19 @@ void setup(void) {
     int sensor_enabled = millis();
     connectWifi();
     int wifi_connected = millis();
-    const int SENSOR_STARTUP_TIME = 1500;
+    const int SENSOR_STARTUP_TIME = 1000;
     if (wifi_connected - sensor_enabled < SENSOR_STARTUP_TIME) {
         delay(SENSOR_STARTUP_TIME - (wifi_connected - sensor_enabled));
     }
     initSensors();
     readSensors();
-    //delay(5000); // power usage?
+    // For the time it takes to read the sensors, we could try forcing wifi sleep
     int sensor_init_read = millis();
     publishSensors();
     int sensors_published = millis();
     publish("wifi-connect", wifi_connected - start_up);
     publish("sensor-init-read",  sensor_init_read - start_up);
     publish("sensor-publish", sensors_published - start_up);
-    Serial.print("Wifi connect: ");
-    Serial.println(wifi_connected - start_up);
-    Serial.print("sensor-init-read: ");
-    Serial.println(sensor_init_read - start_up);
-    Serial.print("sensor-publish:");
-    Serial.println(sensors_published - start_up);
     publishCycleDuration();
     deepSleep();
 }
@@ -426,5 +420,7 @@ void loop(void) {
 
 void publish(String measurement_name, float value) {
     String topic = String("/") + NODE_NAME + String("/") + measurement_name;
+    Serial.print(measurement_name + " ");
+    Serial.println(String(value));
     client.publish(topic, String(value));
 }
