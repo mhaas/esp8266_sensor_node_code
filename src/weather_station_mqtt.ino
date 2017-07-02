@@ -6,13 +6,9 @@
 
 //  74880 shows the boot messages
 #define SERIAL_BAUD 74880
-/*
-   For the ADC/Battery voltage measurement: on the NodeMCU 1.0, Pin A0 already has a voltage divider so that it expects 0-3.3V.
-   For a ~6V battery pack, you have go bring your own voltage divider and use PIN2 as the input (labeled as RSVD). See Page 5 "IO CONN" in NODEMCU_DEVKIT_V1.0.PDF.
-   With my DMM, "deep sleep" voltage is 4.96V and about 4.85 once the ESP wakes. This results in a value of 743 from the ADC.
- */
 
-#define SENSOR_BAT_EXTERNAL_CONSTANT 4.85 / 743.0;
+// Observed voltage divided by ADC reading
+#define SENSOR_BAT_EXTERNAL_CONSTANT 4.26 / 509;
 
 /*
    END config constants
@@ -330,6 +326,7 @@ void publishSensorBat() {
         delay(10);
     }
     voltage = voltage / iterations;
+    voltage = voltage * SENSOR_BAT_EXTERNAL_CONSTANT;
     publish("bat", voltage);
 #endif /* SENSOR_BAT_INTERNAL */
 }
