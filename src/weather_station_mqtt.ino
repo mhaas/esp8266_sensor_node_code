@@ -18,6 +18,8 @@
    END config constants
  */
 
+const int PIN_GNDSW_ENABLE = 15;
+
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <Ticker.h>
@@ -142,6 +144,11 @@ void connectWifi()  {
     } else {
         Serial.println("Could not connect to MQTT server!");
     }
+}
+
+void enableSensors() {
+    pinMode(PIN_GNDSW_ENABLE, OUTPUT);
+    digitalWrite(PIN_GNDSW_ENABLE, HIGH);
 }
 
 void initSensors() {
@@ -332,6 +339,10 @@ void publishCycleDuration() {
     publish("cycle-duration", cur - start_up); 
 }
 
+void disableSensors() {
+    digitalWrite(PIN_GNDSW_ENABLE, LOW);
+}
+
 void deepSleep() {
     Serial.println("going to sleep!");
     /* 
@@ -365,6 +376,9 @@ void setup(void) {
     // where wifi will have to be set up in connectWifi().
     // That should shave off precious milliseconds - FWIW, reading the DHT22
     // takes about 275ms
+    
+    // We may have to give the sensors enough time to boot up properly
+    enableSensors();
     initSensors();
     readSensors();
     int sensor_init_read = millis();
