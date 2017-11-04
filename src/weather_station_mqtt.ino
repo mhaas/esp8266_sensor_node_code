@@ -107,7 +107,6 @@ void mqttCallback(const MQTT::Publish& pub) {
     if (givenTopic.equals(updateTopic)) {
         checkUpdate();
     }
-
 }
 
 void checkUpdate() {
@@ -132,9 +131,9 @@ void checkUpdate() {
 }
 
 void connectWifi()  {
-    IPAddress node_ip(192, 168, 1, 61);
-    IPAddress node_gateway(192, 168, 1, 1);
-    IPAddress node_subnet(255, 255, 255, 0);
+    IPAddress node_ip(IP);
+    IPAddress node_gateway(GATEWAY);
+    IPAddress node_subnet(SUBNET);
 
 
    WiFiClient::setLocalPortStart(micros());
@@ -151,6 +150,7 @@ void connectWifi()  {
             Serial.print(".");
             attempt++;
             if (attempt == 150) {
+                // TODO: this will only reset for longer UPDATE_INERVAL
                 deepSleep();
             }
         }
@@ -372,6 +372,11 @@ void publishSensorBat() {
 }
 
 void deepSleep() {
+    if (UPDATE_INTERVAL < 15) {
+        Serial.println("UPDATE_INTERVAL too short. Not going into deep sleep!");
+        delay(UPDATE_INTERVAL * 1000);
+        return;
+    }
     Serial.println("going to sleep!");
     /* 
      * WAKE_RF_DEFAULT works.
@@ -407,10 +412,15 @@ void checkBatteryNotTooLow() {
     }
 }
 
+int wifi_connected;
+
 void setup(void) {
     Serial.begin(SERIAL_BAUD);
-    // Wait at most 15s before going back to sleep
-    sleepTicker.once_ms(15 * 1000, &deepSleep);
+    // Wait at most 15s before going back to sleep,
+    // but only if we actually sleep
+    if (UPDATE_INTERVAL >= 15) {
+        sleepTicker.once_ms(15 * 1000, &deepSleep);
+    }
     // We enable sensors first, then wait for WiFi to connect. If WiFi connects faster
     // than we expect the sensors to be ready, we wait some additional time before initializing
     // and reading.
@@ -420,12 +430,15 @@ void setup(void) {
     enableSensors();
     int sensor_enabled = millis();
     connectWifi();
-    int wifi_connected = millis();
+    wifi_connected = millis();
     const int SENSOR_STARTUP_TIME = 1000;
     if (wifi_connected - sensor_enabled < SENSOR_STARTUP_TIME) {
         delay(SENSOR_STARTUP_TIME - (wifi_connected - sensor_enabled));
     }
     initSensors();
+}
+
+void loop(void) {
     readSensors();
     checkBatteryNotTooLow();
     // For the time it takes to read the sensors, we could try forcing wifi sleep
@@ -436,11 +449,8 @@ void setup(void) {
     publish("sensor-init-read",  sensor_init_read - start_up);
     publish("sensor-publish", sensors_published - start_up);
     publishCycleDuration();
+    // The call to deepSleep may either reset the MCU or just delay()
     deepSleep();
-}
-
-
-void loop(void) {
 }
 
 void publish(String measurement_name, float value) {

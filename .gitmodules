@@ -16,9 +16,3 @@
 [submodule "ext/libs/imroy_pubsubclient"]
 	path = ext/libs/imroy_pubsubclient
 	url = https://github.com/Imroy/pubsubclient.git
-[submodule "lib/Adafruit_SI1145_Library"]
-	path = lib/Adafruit_SI1145_Library
-	url = https://github.com/adafruit/Adafruit_SI1145_Library.git
-[submodule "lib/pubsubclient"]
-	path = lib/pubsubclient
-	url = https://github.com/Imroy/pubsubclient.git
